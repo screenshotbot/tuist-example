@@ -34,7 +34,7 @@ struct ChatDetailView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
 
-                AvatarView(contact: conversation.contact, size: 36)
+                AvatarView(contact: conversation.contact, size: 40)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(conversation.contact.name)
@@ -54,11 +54,11 @@ struct ChatDetailView: View {
             .font(.body)
             .foregroundStyle(Color.accentColor)
             .padding(.horizontal, 14)
-            .padding(.vertical, 9)
+            .padding(.vertical, 10)
 
             Divider()
         }
-        .background(Color(uiColor: .systemBackground))
+        .background(Color(uiColor: .secondarySystemBackground))
     }
 
     private var presenceLine: String {
@@ -173,16 +173,16 @@ struct ChatComposer: View {
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .frame(minHeight: 36)
-                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
+                .frame(minHeight: 38)
+                .background(Color(uiColor: .tertiarySystemFill), in: Capsule())
 
                 Image(systemName: hasDraft ? "arrow.up" : "mic.fill")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(hasDraft ? Color.white : Color.accentColor)
-                    .frame(width: 36, height: 36)
-                    .background(hasDraft ? Color.accentColor : Color.clear, in: Circle())
+                    .foregroundStyle(Color.white)
+                    .frame(width: 38, height: 38)
+                    .background(Color.accentColor, in: Circle())
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
