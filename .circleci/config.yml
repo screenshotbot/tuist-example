@@ -9,7 +9,7 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: screenshotbot_ci
-    resource_class: macos.m1.large.gen1
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run: bundle install
@@ -28,6 +28,7 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: adhoc
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run: bundle install
