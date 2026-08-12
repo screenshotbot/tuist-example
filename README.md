@@ -231,3 +231,18 @@ Dir.glob("../**/__Snapshots__/").reject { |dir| dir.include?("/Tuist/") }
 
 Each remaining directory becomes one channel, named after the directory that
 contains it — `SimpleProjectTests`, `InboxSnapshotTests`, and so on, one channel per snapshot target.
+
+### Batching
+
+Six snapshot targets means six channels, and without batching that's six
+separate build statuses per commit. `--batch` groups them:
+
+```ruby
+sh "~/screenshotbot/recorder --channel #{channel_name} --batch sample-app " \
+   "--directory #{dir} --recursive"
+```
+
+The batch name is shared across the per-channel invocations, and that's what
+ties them into one status. It matters more the more targets you have — a
+monorepo with a channel per feature module wants exactly one notification per
+commit, not forty.
