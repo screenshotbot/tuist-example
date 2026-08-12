@@ -39,11 +39,16 @@ lane :generate do
   run_tuist "generate --no-open"
 end
 
+# `tuist test` generates the project and then runs it through xcodebuild, so it
+# replaces both `tuist generate` and fastlane's own `run_tests`. Selective
+# testing is on by default: Tuist hashes each target and skips the ones whose
+# hash matches an earlier successful run.
+#
+# Pass `--no-selective-testing` to force a full run.
 lane :tests do
-  run_tests(workspace: "SimpleProject.xcworkspace",
-	scheme: "SimpleProjectTests", devices: ["iPhone SE (3rd generation)"], max_concurrent_simulators: 1,
-	concurrent_workers: 1,
-	disable_concurrent_testing: true)
+  run_tuist %(test SimpleProjectTests ) +
+    %(--device "iPhone SE (3rd generation)" ) +
+    %(--result-bundle-path output/SimpleProjectTests.xcresult)
 end
 
 lane :fetch_screenshotbot do
@@ -53,17 +58,35 @@ end
 lane :screenshotbot_upload_all do
   # For each __Snapshots__ directory, load it to screenshotbot.
   #
-  # Tuist checks the Swift package dependencies out into Tuist/.build, and
-  # swift-snapshot-testing carries __Snapshots__ directories of its own — skip
-  # those so we only upload this app's snapshots.
-  Dir.glob("../**/__Snapshots__/").reject { |dir| dir.include?("/Tuist/") }.each do |dir|
+  # Two directories get skipped:
+  #
+  #  - Anything under Tuist/, because Tuist checks the Swift package
+  #    dependencies out into Tuist/.build and swift-snapshot-testing carries
+  #    __Snapshots__ directories of its own.
+  #
+  #  - Anything empty. The snapshots aren't committed, so on a fresh clone a
+  #    directory only fills up if its tests actually ran — and with selective
+  #    testing they might not have. Uploading an empty directory would tell
+  #    Screenshotbot that every screenshot in the channel was deleted, rather
+  #    than that nothing changed.
+  snapshot_dirs = Dir.glob("../**/__Snapshots__/")
+                     .reject { |dir| dir.include?("/Tuist/") }
+                     .reject { |dir| Dir.glob("#{dir}**/*.png").empty? }
+
+  if snapshot_dirs.empty?
+    UI.important("No snapshots were written — skipping the Screenshotbot upload.")
+  end
+
+  snapshot_dirs.each do |dir|
     channel_name = dir[3..-("/__Snapshots__/".length + 1)]
     sh "~/screenshotbot/recorder --channel #{channel_name} --directory #{dir} --recursive"
   end
 end
 
 lane :screenshotbot_ci do
-  generate
+  # `tests` generates the project itself, but the external packages still have
+  # to be resolved before anything can be generated.
+  run_tuist "install"
   tests
   fetch_screenshotbot
   screenshotbot_upload_all

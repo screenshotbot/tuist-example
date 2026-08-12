@@ -26,7 +26,7 @@ use [mise](https://mise.jdx.dev), any Tuist 4.x install works.
 Run the snapshot tests from the `SimpleProjectTests` scheme in Xcode, or:
 
 ```sh
-bundle exec fastlane tests
+bundle exec fastlane tests          # tuist test, with selective testing
 ```
 
 Re-record every snapshot with `RECORD_SNAPSHOTS=1` in the test action's
@@ -76,18 +76,79 @@ command installs mise and the pinned Tuist, and the `screenshotbot_ci` lane runs
 
 ```ruby
 lane :screenshotbot_ci do
-  generate               # tuist install && tuist generate --no-open
-  tests                  # xcodebuild test against SimpleProject.xcworkspace
+  run_tuist "install"    # resolve the Swift package dependencies
+  tests                  # tuist test — generates, then runs, SimpleProjectTests
   fetch_screenshotbot    # install the recorder
   screenshotbot_upload_all
 end
 ```
+
+`tuist test` produces an `.xcresult` rather than the JUnit XML fastlane's `scan`
+used to emit, so CircleCI keeps the result bundle as a build artifact instead of
+feeding `store_test_results`.
 
 **Xcode Cloud** (`ci_scripts/`) — `ci_post_clone.sh` installs Tuist and generates
 the workspace before the build starts; `ci_post_xcodebuild.sh` uploads the
 `.xcresult` to Screenshotbot. In the Xcode Cloud UI, point the workflow at
 `SimpleProject.xcworkspace` and the `SimpleProjectTests` scheme — both exist by
 the time `ci_post_clone.sh` finishes.
+
+## Selective testing
+
+The `tests` lane runs `tuist test` rather than `xcodebuild test`. Tuist hashes
+each target — sources, resources, settings, dependencies, manifest — and skips
+test targets whose hash matches an earlier **successful** run:
+
+```sh
+tuist test SimpleProjectTests --device "iPhone SE (3rd generation)"
+tuist test SimpleProjectTests --no-selective-testing   # force a full run
+```
+
+Those hashes are cached locally by default, which is no use to a CI runner that
+starts empty every time. Sharing them across machines is what the tuist.dev
+account is for — a `fullHandle`, plus a project token on CI:
+
+```sh
+tuist auth login
+tuist organization create screenshotbot          # or use your personal handle
+tuist project create screenshotbot/tuist-example
+tuist project tokens create screenshotbot/tuist-example
+```
+
+The token goes into CircleCI's project-level environment variables as
+`TUIST_TOKEN` — not into `.circleci/config.yml`, which is committed.
+
+**You don't need any of this to use this repo.** A project that declares a
+`fullHandle` refuses to generate unless the caller is authenticated against that
+tuist.dev project, which would mean requiring an account just to clone the
+sample and read it. So `Tuist.swift` takes the handle from the environment:
+
+```swift
+let fullHandle = Environment.fullHandle.getString(default: "")
+let tuist = fullHandle.isEmpty ? Tuist() : Tuist(fullHandle: fullHandle)
+```
+
+The CircleCI job sets `TUIST_FULL_HANDLE` (`Environment.fullHandle` reads
+`TUIST_FULL_HANDLE`) next to its token. Everywhere else — a fresh clone, Xcode
+Cloud, a fork's PR — generation works offline and every test simply runs.
+
+> Selective testing is a Tuist feature, not a Screenshotbot requirement. Swap
+> the lane back to `xcodebuild test` and the snapshot workflow below is
+> unchanged.
+
+### Selective testing and Screenshotbot
+
+A skipped target writes no snapshots. Since the snapshots aren't committed, a
+fresh CI clone starts with an empty `__Snapshots__` directory — and uploading an
+empty directory tells Screenshotbot that every screenshot in the channel was
+*deleted*, not that nothing changed. The upload lane therefore skips empty
+directories, so a fully-skipped run uploads nothing at all and the channel keeps
+its previous run.
+
+The payoff also scales with how many targets you have. This sample is one app
+and one snapshot target, so selective testing is all-or-nothing; it starts
+earning its keep once the app is split into feature modules that change
+independently.
 
 ### One Tuist-specific gotcha
 
