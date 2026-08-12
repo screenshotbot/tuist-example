@@ -3,6 +3,45 @@ import ProjectDescription
 let bundleId = "io.screenshotbot.swift-snapshot-testing-example"
 let deploymentTargets: DeploymentTargets = .iOS("17.0")
 
+/// Test targets that capture screenshots.
+///
+/// They're tagged `screenshotbot` and they reach `SnapshotTesting` only through
+/// the `SnapshotSupport` framework — the transitive shape a real multi-module
+/// app has, and the reason anything classifying these targets has to walk the
+/// dependency graph rather than look for a direct edge.
+let snapshotTestTargets = [
+    "InboxSnapshotTests",
+    "ThreadSnapshotTests",
+    "BubbleSnapshotTests",
+    "ComponentsSnapshotTests",
+    "OnboardingSnapshotTests",
+]
+
+/// Test targets that capture nothing. No tag, no snapshot dependency — these
+/// are the ones selective testing can skip with no consequence for any channel.
+let plainTestTargets = [
+    "ChatModelsTests",
+    "ChatClockTests",
+    "SampleDataTests",
+    "StringsTests",
+    "PaletteTests",
+]
+
+func testTarget(_ name: String, snapshots: Bool) -> Target {
+    .target(
+        name: name,
+        destinations: .iOS,
+        product: .unitTests,
+        bundleId: "\(bundleId).\(name.lowercased())",
+        deploymentTargets: deploymentTargets,
+        infoPlist: .default,
+        sources: ["\(name)/**/*.swift"],
+        dependencies: [.target(name: "SimpleProject")]
+            + (snapshots ? [.target(name: "SnapshotSupport")] : []),
+        metadata: snapshots ? .metadata(tags: ["screenshotbot"]) : .default
+    )
+}
+
 let project = Project(
     name: "SimpleProject",
     organizationName: "Screenshotbot",
@@ -73,11 +112,45 @@ let project = Project(
                 .target(name: "SimpleProject")
             ]
         ),
-    ],
+
+        // Snapshot helpers shared by the per-feature snapshot targets. It links
+        // XCTest, hence ENABLE_TESTING_SEARCH_PATHS.
+        .target(
+            name: "SnapshotSupport",
+            destinations: .iOS,
+            product: .staticFramework,
+            bundleId: "\(bundleId).snapshotsupport",
+            deploymentTargets: deploymentTargets,
+            infoPlist: .default,
+            sources: ["SnapshotSupport/**/*.swift"],
+            dependencies: [.external(name: "SnapshotTesting")],
+            settings: .settings(base: ["ENABLE_TESTING_SEARCH_PATHS": "YES"])
+        ),
+    ]
+        + snapshotTestTargets.map { testTarget($0, snapshots: true) }
+        + plainTestTargets.map { testTarget($0, snapshots: false) },
     schemes: [
         // Schemes are part of the manifest, so every clone (and every CI run)
         // gets exactly the same ones — nothing depends on Xcode autocreating
-        // them. `SimpleProjectTests` is the scheme fastlane runs in CI.
+        // them. `AllTests` is the scheme fastlane runs in CI.
+        //
+        // One scheme covering every unit test target is deliberate: selective
+        // testing skips per target *within* a single run, so this is what makes
+        // partial skips — some channels uploading, others not — visible.
+        .scheme(
+            name: "AllTests",
+            shared: true,
+            buildAction: .buildAction(targets: ["SimpleProjectTests"]
+                + snapshotTestTargets.map { .target($0) }
+                + plainTestTargets.map { .target($0) }),
+            testAction: .targets(
+                [.testableTarget(target: "SimpleProjectTests")]
+                    + snapshotTestTargets.map { .testableTarget(target: .target($0)) }
+                    + plainTestTargets.map { .testableTarget(target: .target($0)) },
+                configuration: .debug
+            )
+        ),
+
         .scheme(
             name: "SimpleProjectTests",
             shared: true,
