@@ -2,6 +2,27 @@
 # .circleci/config.yml
 
 version: 2.1
+
+commands:
+  setup:
+    description: >
+      Install the Ruby and Tuist toolchains. Tuist is pinned in .mise.toml and
+      installed with mise; `bundle exec fastlane generate` then turns
+      Project.swift into SimpleProject.xcworkspace.
+    steps:
+      - checkout
+      - run:
+          name: Install mise
+          command: |
+            curl https://mise.run | sh
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> $BASH_ENV
+      - run:
+          name: Install Tuist
+          command: |
+            mise trust
+            mise install
+      - run: bundle install
+
 jobs:
   build-and-test:
     macos:
@@ -11,8 +32,7 @@ jobs:
       FASTLANE_LANE: screenshotbot_ci
     resource_class: m4pro.medium
     steps:
-      - checkout
-      - run: bundle install
+      - setup
       - run:
           name: Fastlane
           no_output_timeout: 30m
@@ -30,8 +50,7 @@ jobs:
       FASTLANE_LANE: adhoc
     resource_class: m4pro.medium
     steps:
-      - checkout
-      - run: bundle install
+      - setup
       - run:
           name: Fastlane
           no_output_timeout: 30m

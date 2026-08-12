@@ -6,5 +6,16 @@ fastlane/test_output
 *.xcuserdatad
 
 # For Screenshotbot, we shouldn't commit the snapshots into
-# the repository. 
+# the repository.
 **/__Snapshots__/**/*.png
+
+# Tuist generates the Xcode project and workspace from Project.swift, so
+# neither of them is checked in. Run `tuist generate` after cloning.
+*.xcodeproj
+*.xcworkspace
+
+# Tuist's own build products: Derived/ holds generated Info.plists, and
+# Tuist/.build holds the resolved Swift package checkouts.
+Derived/
+Tuist/.build/
+graph.dot

@@ -26,8 +26,22 @@ platform :ios do
   end
 end
 
+# Tuist is installed via mise (see .mise.toml). Locally you probably have
+# `tuist` on your PATH already; on CI it's reached through mise.
+def run_tuist(command)
+  runner = system("which mise > /dev/null 2>&1") ? "mise exec --" : ""
+  sh "cd .. && #{runner} tuist #{command}"
+end
+
+desc "Resolve dependencies and generate SimpleProject.xcworkspace from Project.swift"
+lane :generate do
+  run_tuist "install"
+  run_tuist "generate --no-open"
+end
+
 lane :tests do
-  run_tests(scheme: "SimpleProjectTests", devices: ["iPhone SE (3rd generation)"], max_concurrent_simulators: 1, 
+  run_tests(workspace: "SimpleProject.xcworkspace",
+	scheme: "SimpleProjectTests", devices: ["iPhone SE (3rd generation)"], max_concurrent_simulators: 1,
 	concurrent_workers: 1,
 	disable_concurrent_testing: true)
 end
@@ -37,16 +51,20 @@ lane :fetch_screenshotbot do
 end
 
 lane :screenshotbot_upload_all do
-  # For each __Snapshots__ directory, load it to screenshotbot
-  Dir.glob("../**/__Snapshots__/").each do |dir|
+  # For each __Snapshots__ directory, load it to screenshotbot.
+  #
+  # Tuist checks the Swift package dependencies out into Tuist/.build, and
+  # swift-snapshot-testing carries __Snapshots__ directories of its own — skip
+  # those so we only upload this app's snapshots.
+  Dir.glob("../**/__Snapshots__/").reject { |dir| dir.include?("/Tuist/") }.each do |dir|
     channel_name = dir[3..-("/__Snapshots__/".length + 1)]
     sh "~/screenshotbot/recorder --channel #{channel_name} --directory #{dir} --recursive"
   end
 end
 
 lane :screenshotbot_ci do
+  generate
   tests
   fetch_screenshotbot
   screenshotbot_upload_all
 end
-
