@@ -46,9 +46,9 @@ end
 #
 # Pass `--no-selective-testing` to force a full run.
 lane :tests do
-  run_tuist %(test SimpleProjectTests ) +
+  run_tuist %(test AllTests ) +
     %(--device "iPhone SE (3rd generation)" ) +
-    %(--result-bundle-path output/SimpleProjectTests.xcresult)
+    %(--result-bundle-path output/AllTests.xcresult)
 end
 
 lane :fetch_screenshotbot do

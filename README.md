@@ -23,7 +23,7 @@ tuist generate              # writes SimpleProject.xcworkspace and opens it
 `mise` will ask you to `mise trust` this repo the first time. If you'd rather not
 use [mise](https://mise.jdx.dev), any Tuist 4.x install works.
 
-Run the snapshot tests from the `SimpleProjectTests` scheme in Xcode, or:
+Run the tests from the `AllTests` scheme in Xcode, or:
 
 ```sh
 bundle exec fastlane tests          # tuist test, with selective testing
@@ -37,7 +37,7 @@ environment (see the header of `SimpleProjectTests/SnapshotSupport.swift`).
 | File | Role |
 | --- | --- |
 | `Tuist.swift` | Project-wide Tuist configuration. |
-| `Project.swift` | The app, the two test targets, and the schemes. This replaces `SimpleProject.xcodeproj`. |
+| `Project.swift` | The app, every test target, and the schemes. This replaces `SimpleProject.xcodeproj`. |
 | `Tuist/Package.swift` | External Swift package dependencies — here, Screenshotbot's fork of swift-snapshot-testing. |
 | `.mise.toml` | Pins the Tuist version so every machine and CI runner generates the same project. |
 | `fastlane/Fastfile` | `generate` → `tests` → upload to Screenshotbot. |
@@ -60,11 +60,42 @@ on the CI machine. With Tuist it's declared in `Tuist/Package.swift`:
 and consumed by the test target in `Project.swift` as
 `.external(name: "SnapshotTesting")`.
 
+### Test targets
+
+Twelve of them, laid out so the interesting cases are all represented:
+
+| Targets | Snapshots? | Tagged? | Reaches `SnapshotTesting` |
+| --- | --- | --- | --- |
+| `SimpleProjectTests` | yes | no | directly |
+| `InboxSnapshotTests`, `ThreadSnapshotTests`, `BubbleSnapshotTests`, `ComponentsSnapshotTests`, `OnboardingSnapshotTests` | yes | `screenshotbot` | through `SnapshotSupport` |
+| `ChatModelsTests`, `ChatClockTests`, `SampleDataTests`, `StringsTests`, `PaletteTests` | no | no | not at all |
+| `SimpleProjectUITests` | no | no | not at all |
+
+Each snapshot target writes its own `__Snapshots__` directory and therefore
+becomes its own Screenshotbot channel, while the five plain unit test targets
+produce nothing to upload — so a run where only those changed uploads nothing at
+all.
+
+The `SnapshotSupport` framework is the point of the middle row: real
+multi-module apps wrap the snapshot library in their own helpers, so tooling
+that classifies targets has to walk the dependency graph transitively rather
+than look for a direct edge. Tagging with `TargetMetadata` is the explicit
+alternative:
+
+```swift
+metadata: .metadata(tags: ["screenshotbot"])
+```
+
+`SimpleProjectTests` is deliberately left untagged, so both routes — inference
+and declaration — are exercised.
+
 ### Schemes
 
 Tuist doesn't autogenerate a scheme for test targets, and nothing in a Tuist repo
-should depend on Xcode autocreating one. `Project.swift` therefore declares the
-`SimpleProjectTests` scheme explicitly — that's the scheme CI runs.
+should depend on Xcode autocreating one. `Project.swift` declares them
+explicitly; `AllTests` covers every unit test target and is the scheme CI runs.
+One scheme rather than twelve is deliberate — selective testing skips per target
+*within* a run, so this is what makes partial skips visible.
 
 ## CI
 
@@ -77,7 +108,7 @@ command installs mise and the pinned Tuist, and the `screenshotbot_ci` lane runs
 ```ruby
 lane :screenshotbot_ci do
   run_tuist "install"    # resolve the Swift package dependencies
-  tests                  # tuist test — generates, then runs, SimpleProjectTests
+  tests                  # tuist test — generates, then runs, AllTests
   fetch_screenshotbot    # install the recorder
   screenshotbot_upload_all
 end
@@ -90,7 +121,7 @@ feeding `store_test_results`.
 **Xcode Cloud** (`ci_scripts/`) — `ci_post_clone.sh` installs Tuist and generates
 the workspace before the build starts; `ci_post_xcodebuild.sh` uploads the
 `.xcresult` to Screenshotbot. In the Xcode Cloud UI, point the workflow at
-`SimpleProject.xcworkspace` and the `SimpleProjectTests` scheme — both exist by
+`SimpleProject.xcworkspace` and the `AllTests` scheme — both exist by
 the time `ci_post_clone.sh` finishes.
 
 ## Selective testing
@@ -100,8 +131,8 @@ each target — sources, resources, settings, dependencies, manifest — and ski
 test targets whose hash matches an earlier **successful** run:
 
 ```sh
-tuist test SimpleProjectTests --device "iPhone SE (3rd generation)"
-tuist test SimpleProjectTests --no-selective-testing   # force a full run
+tuist test AllTests --device "iPhone SE (3rd generation)"
+tuist test AllTests --no-selective-testing   # force a full run
 ```
 
 Those hashes are cached locally by default, which is no use to a CI runner that
@@ -162,4 +193,4 @@ Dir.glob("../**/__Snapshots__/").reject { |dir| dir.include?("/Tuist/") }
 ```
 
 Each remaining directory becomes one channel, named after the directory that
-contains it (here: `SimpleProjectTests`).
+contains it — `SimpleProjectTests`, `InboxSnapshotTests`, and so on, one channel per snapshot target.
