@@ -30,6 +30,11 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: screenshotbot_ci
+      # Opts this job into tuist.dev, which is what lets selective testing
+      # share hashes between runs. Pairs with TUIST_TOKEN, set as a
+      # project-level environment variable in the CircleCI UI — without a
+      # token, a project with a full handle refuses to generate.
+      TUIST_FULL_HANDLE: screenshotbot/tuist-example
     resource_class: m4pro.medium
     steps:
       - setup
@@ -37,10 +42,10 @@ jobs:
           name: Fastlane
           no_output_timeout: 30m
           command: bundle exec fastlane $FASTLANE_LANE
+      # `tuist test` writes an .xcresult rather than the JUnit XML that
+      # store_test_results wants, so the result bundle is kept as an artifact.
       - store_artifacts:
           path: output
-      - store_test_results:
-          path: output/scan
 
   adhoc:
     macos:

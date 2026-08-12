@@ -1,5 +1,6 @@
 fastlane/report.xml
 fastlane/test_output
+output/
 
 # Xcode user-specific files
 *.xcuserdata
