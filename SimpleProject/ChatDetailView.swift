@@ -31,17 +31,17 @@ struct ChatDetailView: View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "chevron.backward")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
 
                 AvatarView(contact: conversation.contact, size: 36)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(conversation.contact.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.body.weight(.semibold))
                         .lineLimit(1)
                     Text(presenceLine)
-                        .font(.system(size: 12))
+                        .font(.caption)
                         .foregroundStyle(conversation.isTyping ? Color.accentColor : Color.secondary)
                         .lineLimit(1)
                 }
@@ -51,7 +51,7 @@ struct ChatDetailView: View {
                 Image(systemName: "video")
                 Image(systemName: "phone")
             }
-            .font(.system(size: 17))
+            .font(.body)
             .foregroundStyle(Color.accentColor)
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
@@ -158,19 +158,19 @@ struct ChatComposer: View {
             Divider()
             HStack(alignment: .bottom, spacing: 10) {
                 Image(systemName: "plus")
-                    .font(.system(size: 19, weight: .medium))
+                    .font(.title3.weight(.medium))
                     .foregroundStyle(Color.accentColor)
                     .frame(height: 36)
 
                 HStack(spacing: 8) {
                     Text(hasDraft ? draft : strings.messagePlaceholder)
-                        .font(.system(size: 16))
+                        .font(.body)
                         .foregroundStyle(hasDraft ? Color.primary : Color.secondary)
                         .lineLimit(4)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 4)
                     Image(systemName: "face.smiling")
-                        .font(.system(size: 17))
+                        .font(.body)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 12)
@@ -179,7 +179,7 @@ struct ChatComposer: View {
                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
 
                 Image(systemName: hasDraft ? "arrow.up" : "mic.fill")
-                    .font(.system(size: hasDraft ? 16 : 17, weight: .semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(hasDraft ? Color.white : Color.accentColor)
                     .frame(width: 36, height: 36)
                     .background(hasDraft ? Color.accentColor : Color.clear, in: Circle())

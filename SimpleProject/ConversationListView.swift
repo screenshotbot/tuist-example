@@ -54,7 +54,7 @@ struct ConversationListView: View {
                 Text(strings.search)
                 Spacer(minLength: 0)
             }
-            .font(.system(size: 16))
+            .font(.body)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
@@ -67,7 +67,7 @@ struct ConversationListView: View {
 
     private func circleButton(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 16, weight: .semibold))
+            .font(.body.weight(.semibold))
             .foregroundStyle(Color.accentColor)
             .frame(width: 34, height: 34)
             .background(Color(uiColor: .secondarySystemBackground), in: Circle())
@@ -87,17 +87,17 @@ struct ConversationRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(conversation.contact.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.body.weight(.semibold))
                         .lineLimit(1)
                     if conversation.isMuted {
                         Image(systemName: "bell.slash.fill")
-                            .font(.system(size: 11))
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 4)
                     if let last = conversation.lastMessage {
                         Text(ChatClock.relativeStamp(last.sentAt, strings: strings, locale: locale))
-                            .font(.system(size: 13))
+                            .font(.footnote)
                             .foregroundStyle(conversation.unreadCount > 0 && !conversation.isMuted
                                              ? Color.accentColor : Color.secondary)
                     }
@@ -119,7 +119,7 @@ struct ConversationRow: View {
     private var preview: some View {
         if conversation.isTyping {
             Text(String(format: strings.typingFormat, firstName))
-                .font(.system(size: 15))
+                .font(.subheadline)
                 .foregroundStyle(Color.accentColor)
                 .lineLimit(1)
         } else {
@@ -129,11 +129,11 @@ struct ConversationRow: View {
                 }
                 if let symbol = conversation.previewSymbol {
                     Image(systemName: symbol)
-                        .font(.system(size: 12))
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Text(conversation.previewOverride ?? conversation.lastMessage?.previewText ?? "")
-                    .font(.system(size: 15))
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
@@ -147,7 +147,7 @@ struct ConversationRow: View {
                 UnreadBadge(count: conversation.unreadCount, muted: conversation.isMuted)
             } else if conversation.isPinned {
                 Image(systemName: "pin.fill")
-                    .font(.system(size: 12))
+                    .font(.caption)
                     .rotationEffect(.degrees(45))
                     .foregroundStyle(.secondary)
             }
@@ -176,7 +176,7 @@ struct ChatEmptyStateView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 260)
             Text(strings.emptyAction)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.body.weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 22)
                 .padding(.vertical, 12)
@@ -212,11 +212,11 @@ struct ChatTabBar: View {
         VStack(spacing: 3) {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: symbol)
-                    .font(.system(size: 19))
-                    .frame(width: 34, height: 24)
+                    .font(.title3)
+                    .frame(minWidth: 34, minHeight: 24)
                 if badge > 0 {
                     Text("\(badge)")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.caption2.weight(.bold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 4)
                         .frame(minWidth: 16, minHeight: 16)
@@ -225,7 +225,7 @@ struct ChatTabBar: View {
                 }
             }
             Text(title)
-                .font(.system(size: 10, weight: .medium))
+                .font(.caption2.weight(.medium))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }

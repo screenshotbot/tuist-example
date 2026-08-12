@@ -45,7 +45,7 @@ struct MessageBubbleView: View {
             switch message.body {
             case .text(let text):
                 Text(text)
-                    .font(.system(size: 16))
+                    .font(.body)
                     .foregroundStyle(isMine ? Color.white : Color.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -53,7 +53,7 @@ struct MessageBubbleView: View {
                 photoView(tint: tint)
                 if let caption {
                     Text(caption)
-                        .font(.system(size: 16))
+                        .font(.body)
                         .foregroundStyle(isMine ? Color.white : Color.primary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -100,7 +100,7 @@ struct MessageBubbleView: View {
     private var footer: some View {
         HStack(spacing: 4) {
             Text(ChatClock.time(message.sentAt, locale: locale))
-                .font(.system(size: 11))
+                .font(.caption2)
                 .foregroundStyle(isMine ? Color.white.opacity(0.75) : Color.secondary)
             if isMine {
                 DeliveryTicksView(status: message.status)
@@ -118,10 +118,10 @@ struct MessageBubbleView: View {
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(author)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(isMine ? Color.white : Color.accentColor)
                 Text(text)
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .lineLimit(1)
                     .foregroundStyle(isMine ? Color.white.opacity(0.85) : Color.secondary)
             }
@@ -164,7 +164,7 @@ struct MessageBubbleView: View {
             )
 
             Text(String(format: "0:%02d", seconds))
-                .font(.system(size: 12).monospacedDigit())
+                .font(.caption.monospacedDigit())
                 .foregroundStyle(isMine ? Color.white.opacity(0.8) : Color.secondary)
         }
         .accessibilityLabel(strings.voiceMessage)
@@ -183,11 +183,11 @@ struct MessageBubbleView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.subheadline.weight(.medium))
                     .lineLimit(1)
                     .foregroundStyle(isMine ? Color.white : Color.primary)
                 Text(size)
-                    .font(.system(size: 12))
+                    .font(.caption)
                     .foregroundStyle(isMine ? Color.white.opacity(0.75) : Color.secondary)
             }
         }
@@ -197,10 +197,10 @@ struct MessageBubbleView: View {
         HStack(spacing: 4) {
             ForEach(message.reactions) { reaction in
                 HStack(spacing: 3) {
-                    Text(reaction.emoji).font(.system(size: 12))
+                    Text(reaction.emoji).font(.caption)
                     if reaction.count > 1 {
                         Text("\(reaction.count)")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.caption2.weight(.medium))
                             .foregroundStyle(.secondary)
                     }
                 }

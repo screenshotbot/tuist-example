@@ -65,7 +65,7 @@ struct DeliveryTicksView: View {
                 .padding(.trailing, 4)
             }
         }
-        .font(.system(size: 11, weight: .bold))
+        .font(.caption2.weight(.bold))
         .foregroundStyle(status == .read ? Color(red: 0.45, green: 0.85, blue: 1.0) : tint)
     }
 }
@@ -113,7 +113,7 @@ struct UnreadBadge: View {
 
     var body: some View {
         Text("\(count)")
-            .font(.system(size: 13, weight: .semibold))
+            .font(.footnote.weight(.semibold))
             .monospacedDigit()
             .foregroundStyle(.white)
             .padding(.horizontal, count > 9 ? 7 : 0)
@@ -146,7 +146,7 @@ struct UnreadDivider: View {
         HStack(spacing: 8) {
             Rectangle().fill(Color.accentColor.opacity(0.35)).frame(height: 1)
             Text(label.uppercased())
-                .font(.system(size: 10, weight: .bold))
+                .font(.caption2.weight(.bold))
                 .foregroundStyle(Color.accentColor)
             Rectangle().fill(Color.accentColor.opacity(0.35)).frame(height: 1)
         }
