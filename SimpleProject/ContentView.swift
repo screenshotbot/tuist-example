@@ -8,14 +8,15 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.locale) private var locale
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        ConversationListView(conversations: SampleData.conversations(strings))
+            .environment(\.strings, strings)
+    }
+
+    private var strings: Strings {
+        Strings.forLocale(locale)
     }
 }
 
