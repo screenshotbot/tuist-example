@@ -42,6 +42,10 @@ end
 DEVICE = "iPhone SE (3rd generation)"
 SCHEME = "AllTests"
 
+# Every channel this build uploads is grouped under one Screenshotbot build
+# status, rather than one status per channel.
+BATCH = "sample-app"
+
 # Every test target that produces screenshots, read out of the Tuist graph.
 #
 # A target qualifies if it is tagged `screenshotbot` in Project.swift, or if it
@@ -151,9 +155,14 @@ lane :screenshotbot_upload_all do
     UI.important("No snapshots were written — skipping the Screenshotbot upload.")
   end
 
+  # `--batch` collapses the per-channel uploads into a single build status, so a
+  # commit gets one Screenshotbot notification covering every snapshot target
+  # instead of one per channel. The batch name is shared across the invocations
+  # below; that's what ties them together.
   snapshot_dirs.each do |dir|
     channel_name = dir[3..-("/__Snapshots__/".length + 1)]
-    sh "~/screenshotbot/recorder --channel #{channel_name} --directory #{dir} --recursive"
+    sh "~/screenshotbot/recorder --channel #{channel_name} --batch #{BATCH} " \
+       "--directory #{dir} --recursive"
   end
 end
 
