@@ -1,2 +1,10 @@
 [tools]
 tuist = "4.203.4"
+
+# fastlane's Gemfile.lock is bundled with Bundler 2.7, which needs Ruby 3.1+.
+# macOS still ships Ruby 2.6, so without this `bundle exec fastlane` fails on a
+# fresh machine with "Could not find 'bundler' (2.7.1)".
+#
+# CI doesn't use this entry — the CircleCI image already provides Ruby 3.4.3
+# through rbenv, so `.circleci/config.yml` installs only tuist.
+ruby = "3.4"

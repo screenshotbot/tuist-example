@@ -39,16 +39,90 @@ lane :generate do
   run_tuist "generate --no-open"
 end
 
-# `tuist test` generates the project and then runs it through xcodebuild, so it
-# replaces both `tuist generate` and fastlane's own `run_tests`. Selective
-# testing is on by default: Tuist hashes each target and skips the ones whose
-# hash matches an earlier successful run.
+DEVICE = "iPhone SE (3rd generation)"
+SCHEME = "AllTests"
+
+# Every test target that produces screenshots, read out of the Tuist graph.
 #
-# Pass `--no-selective-testing` to force a full run.
+# A target qualifies if it is tagged `screenshotbot` in Project.swift, or if it
+# reaches SnapshotTesting through its dependencies — the transitive case, since
+# real apps wrap the library in their own helper module rather than depending on
+# it directly.
+def snapshot_test_targets
+  require "json"
+  require "tmpdir"
+
+  Dir.mktmpdir do |dir|
+    run_tuist "graph --format json --no-open --output-path #{dir}"
+    graph = JSON.parse(File.read(File.join(dir, "graph.json")))
+
+    # Tuist serialises dictionaries as flat [key, value, key, value, ...] arrays.
+    node_id = ->(node) do
+      target = node["target"]
+      target && [target["path"], target["name"]]
+    end
+
+    edges = {}
+    graph["dependencies"].each_slice(2) do |source, destinations|
+      id = node_id.call(source)
+      edges[id] = destinations.map { |d| node_id.call(d) }.compact if id
+    end
+
+    reaches = ->(start, name) do
+      seen = {}
+      queue = edges.fetch(start, []).dup
+      until queue.empty?
+        node = queue.shift
+        next if seen[node]
+        return true if node[1] == name
+
+        seen[node] = true
+        queue.concat(edges.fetch(node, []))
+      end
+      false
+    end
+
+    targets = []
+    graph["projects"].each_slice(2) do |path, project|
+      next if path.include?("/.build/")  # the Swift package checkouts
+
+      project["targets"].each do |name, target|
+        next unless %w[unit_tests ui_tests].include?(target["product"])
+
+        tagged = (target.dig("metadata", "tags") || []).include?("screenshotbot")
+        targets << name if tagged || reaches.call([path, name], "SnapshotTesting")
+      end
+    end
+    targets.sort
+  end
+end
+
+# Two passes, because selective testing and snapshot testing want opposite
+# things.
+#
+# Skipping a snapshot target means its channel gets no screenshots for that
+# commit, and a skipped run is indistinguishable from one that produced nothing
+# — so snapshot targets always run. Everything else is selective, which is where
+# the time is saved anyway.
+#
+# Note the flags are repeated per target: `--test-targets A --test-targets B`.
+# A comma-separated list is parsed as a single target name and fails with
+# "The following targets were not found: A,B".
 lane :tests do
-  run_tuist %(test AllTests ) +
-    %(--device "iPhone SE (3rd generation)" ) +
-    %(--result-bundle-path output/AllTests.xcresult)
+  snapshot_targets = snapshot_test_targets
+  UI.message("Snapshot test targets: #{snapshot_targets.join(', ')}")
+
+  run_tuist %(test #{SCHEME} --device "#{DEVICE}" ) +
+    %(--result-bundle-path output/SelectiveTests.xcresult ) +
+    snapshot_targets.map { |t| "--skip-test-targets #{t}" }.join(" ")
+
+  if snapshot_targets.empty?
+    UI.important("No snapshot test targets found — nothing to force a full run for.")
+  else
+    run_tuist %(test #{SCHEME} --device "#{DEVICE}" --no-selective-testing ) +
+      %(--result-bundle-path output/SnapshotTests.xcresult ) +
+      snapshot_targets.map { |t| "--test-targets #{t}" }.join(" ")
+  end
 end
 
 lane :fetch_screenshotbot do

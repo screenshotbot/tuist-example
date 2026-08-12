@@ -20,7 +20,10 @@ commands:
           name: Install Tuist
           command: |
             mise trust
-            mise install
+            # Only tuist: .mise.toml also pins a Ruby for local machines, but
+            # this image already ships 3.4.3 via rbenv and building another one
+            # here would cost minutes for nothing.
+            mise install tuist
       - run: bundle install
 
 jobs:

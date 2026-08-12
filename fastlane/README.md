@@ -13,6 +13,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 # Available Actions
 
+### generate
+
+```sh
+[bundle exec] fastlane generate
+```
+
+Resolve dependencies and generate SimpleProject.xcworkspace from Project.swift
+
 ### tests
 
 ```sh
