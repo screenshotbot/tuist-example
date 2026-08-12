@@ -135,6 +135,38 @@ tuist test AllTests --device "iPhone SE (3rd generation)"
 tuist test AllTests --no-selective-testing   # force a full run
 ```
 
+### Two passes
+
+Selective testing and snapshot testing want opposite things, so the lane runs
+`tuist test` twice:
+
+```ruby
+snapshot_targets = snapshot_test_targets     # read out of the Tuist graph
+
+# 1. everything else, selectively
+run_tuist "test AllTests … " + snapshot_targets.map { |t| "--skip-test-targets #{t}" }.join(" ")
+
+# 2. the snapshot targets, always
+run_tuist "test AllTests --no-selective-testing … " + snapshot_targets.map { |t| "--test-targets #{t}" }.join(" ")
+```
+
+Snapshot targets always run, so every channel gets screenshots on every commit
+and no marker bookkeeping is needed. Everything else is skipped when unchanged,
+which is where the time was going anyway.
+
+`snapshot_test_targets` doesn't hardcode a list — it shells out to `tuist graph
+--format json` and picks targets that are tagged `screenshotbot` **or** reach
+`SnapshotTesting` transitively, so adding a snapshot target to `Project.swift`
+is all it takes for CI to treat it correctly.
+
+Two things to know if you adapt this:
+
+- The flags are **repeated**, not comma-separated. `--test-targets A,B` is
+  parsed as one target name and fails with "The following targets were not
+  found: A,B".
+- `tuist graph` constructs the full graph, so this costs one extra graph load
+  per CI run on top of the two test invocations.
+
 Those hashes are cached locally by default, which is no use to a CI runner that
 starts empty every time. Sharing them across machines is what the tuist.dev
 account is for — a `fullHandle`, plus a project token on CI:
@@ -172,14 +204,19 @@ Cloud, a fork's PR — generation works offline and every test simply runs.
 A skipped target writes no snapshots. Since the snapshots aren't committed, a
 fresh CI clone starts with an empty `__Snapshots__` directory — and uploading an
 empty directory tells Screenshotbot that every screenshot in the channel was
-*deleted*, not that nothing changed. The upload lane therefore skips empty
-directories, so a fully-skipped run uploads nothing at all and the channel keeps
-its previous run.
+*deleted*, not that nothing changed.
 
-The payoff also scales with how many targets you have. This sample is one app
-and one snapshot target, so selective testing is all-or-nothing; it starts
-earning its keep once the app is split into feature modules that change
-independently.
+The two-pass lane above is what keeps that from happening: snapshot targets are
+never skipped, so every channel is uploaded on every commit. The upload lane
+still skips empty directories as a backstop, in case a snapshot target is
+excluded some other way.
+
+The alternative — letting snapshot targets be skipped and telling Screenshotbot
+"this channel is unchanged from commit X" with `--mark-unchanged-from` — needs
+an anchor commit that the build system can't give you. Tuist's stored hashes are
+project-global, so a skip can be justified by a run from any ancestor, or from
+another branch entirely; the parent commit is not a safe assumption. Always
+running the snapshot targets sidesteps the whole question.
 
 ### One Tuist-specific gotcha
 
